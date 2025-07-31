@@ -16,14 +16,22 @@ class RequestState(BaseModel):
     messages:List[str]
     allow_search: bool
 
-@app.post("/chat")
-def chat_endpoint(request:RequestState):
-    logger.info(f"Received request for model : {request.model_name}")
+# ...existing code...
 
+@app.post("/chat")
+def chat_endpoint(request: RequestState):
+    logger.info(f"Received request for model: {request.model_name}")
+
+    # Validate model name
     if request.model_name not in settings.ALLOWED_MODEL_NAMES:
         logger.warning("Invalid model name")
-        raise HTTPException(status_code=400 , detail="Invalid model name")
-    
+        raise HTTPException(status_code=400, detail="Invalid model name")
+
+    # Enforce domain-specific constraints
+    if "medical" not in request.system_prompt.lower():
+        logger.warning("System prompt is outside the allowed domain")
+        raise HTTPException(status_code=400, detail="System prompt must be related to the medical domain")
+
     try:
         response = get_response_from_ai_agents(
             request.model_name,
@@ -32,16 +40,15 @@ def chat_endpoint(request:RequestState):
             request.system_prompt
         )
 
-        logger.info(f"Succesfully got response from AI Agent {request.model_name}")
+        logger.info(f"Successfully got response from AI Agent {request.model_name}")
 
-        return {"response" : response}
-    
+        return {"response": response}
+
     except Exception as e:
-        logger.error("Some error occured during reponse generation")
+        logger.error("Some error occurred during response generation")
         raise HTTPException(
-            status_code=500 , 
-            detail=str(CustomException("Failed to get AI response" , error_detail=e))
-            )
-    
+            status_code=500,
+            detail=str(CustomException("Failed to get AI response", error_detail=e))
+        )
 
 
